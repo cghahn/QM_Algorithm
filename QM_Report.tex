@@ -1,0 +1,42 @@
+\documentclass[12pt, a4paper, titlepage]{article}
+\author{陈彦熹}
+\title{Q-M算法的Matlab实现\ \ 实验报告}
+
+\usepackage{xeCJK}
+\usepackage{fontspec}
+\usepackage{indentfirst}
+\usepackage{setspace}
+
+\setmainfont{NSimSun}
+\setlength{\parindent}{2.45em}
+\linespread{1.2}
+
+\begin{document}
+	\maketitle
+	\section{实验目的}
+	本实验根据Q-M算法的原理，实现一个能处理十变量及以下的逻辑函数的化简工具。理论上该工具也可化简十变量以上的逻辑函数，但是无法保证运行效率。
+	\section{理论依据}
+	本实验的理论依据为Q-M算法，具体实现包括以下两个步骤：
+	\begin{itemize}
+		\item[-]搜索本原蕴含项
+		\item[-]寻找最小覆盖
+	\end{itemize}
+	对于第一步，Q-M算法的基本思想与卡诺图一致，即找出相邻最小项，消除变量因子；对于第二步，本实验采用了Petrick's Method\footnote{Wikipedia. Petrick's Method. https://en.wikipedia.org/wiki/Petrick's\_method}，以便于计算机实现。
+	\section{实验结果}
+	本实验以Matlab函数的形式实现逻辑化简工具。
+	
+	函数Q\_M接受三个参量：N表示逻辑函数变量个数，一般不超过10；m是逻辑函数规范形式的最小项代号组成的向量，元素范围从0到$2^N-1$;d是逻辑函数规范形式的无关项代号组成的向量，元素范围同m。函数实现对于输入参量的合法性检查包括m与d元素范围，当出现输入错误时给出警告信息并终止函数运行；另外函数预先对m与d进行去重复元素处理。函数没有检查m与d中是否存在相同元素，根据函数具体实现，对于这种情况，将该重复元素视为最小项而非无关项(除非m与d元素数目之和恰等于$2^N$，此时函数会错误地返回`1')。
+	
+	函数Q\_M返回值lgcExpr为字符串，表示经过化简得到的最简二级与或形式逻辑表达式，字母A到J为函数变量；变量取非用X'形式表示。
+	\section{具体实现}
+		\subsection{预处理及初始化}
+		对输入参量进行检查与处理，并且定义部分后续所需变量；将最小项与无关项的代号通过函数dec2bin转化成N位二进制字串，存储在矩阵binstr中。
+		\subsection{结合最小项与无关项}
+		比较binstr各行字符串，若只有一位不同，则必有两串该位字符分别为0和1,两串合并，该位字符置为`-'，并加入到nextbinstr中，cmb\_flg中相应值置1；一轮循环结束后，cmb\_flg为0的对应项不可再合并，则放入矩阵final，用nextbinstr更新binstr，更新cmb\_flg，进行新一轮循环。注意到这里并没有按照手工做法，先将各项按照包含1的个数进行分组，是因为这对于运行效率没有大的影响；反而是每次循环后应对binstr进行去重复处理，否则binstr中出现大量重复项，严重影响运行效率。
+		\subsection{寻找最小覆盖}
+		构造本原蕴含图ptk，应用Petrick's Method寻找最小覆盖。首先找出本质本原蕴含项，将该项在final中的对应项加入到rslt中，并且删除ptk中对应的行和列；假如ptk尚不为空，说明还需要寻找尽可能少的本原蕴含项来覆盖剩余的最小项。最终选择的项对应final中的项也加入到rslt中。
+		\subsection{输出结果}
+		将rslt中的各行字符串转化为与或形式逻辑函数式中的各项。比如对于四变量输入，rslt中一行字符串``1-00''转化为逻辑函数中的``AC'D' ''。
+	\section{缺陷与不足}
+	本实验实现的Q\_M函数，最大的缺陷在于寻找最小覆盖过程中，处理ptk非空情况时所使用的一个for循环（第114行）。该处理过程涉及到类似于数学中因式相乘做展开的过程: $(A+B)(A+C)=(A^2+AC+BA+BC)$。对于Q\_M函数，各因式存储在cbcell中，并且长度不一，因此不得不引入向量cbarr，模拟一个轮转循环取元素相乘的过程。假如cbcell中包含3、4、5元素的向量各1个，那么while循环需要执行$3\times 4\times 5=60$次，得到60个展开因子。由于Matlab作为一种解释性语言，循环效率较低，因此这部分代码成为了整个函数性能的瓶颈，尤其当本原蕴含图较为稠密时，这部分循环会消耗大量时间。事实上，若cbcell中的元素等长，比如cbcell包含p个二元素向量，那么可以用一个整数k从0依次加1到$2^p-1$，对每个k值，通过代码dec2bin(k,p)-`0'+1，即可得到一个用于选取各因式元素的向量cbarr，这样做的效率远远高于本实验的实现方式。
+\end{document}
